@@ -1,14 +1,11 @@
 import pandas as pd
 
-class NaivePairMatching():
+
+class AbstractMatching():
     """
-    Class that performs naive pair matching
-
-    Unless the number of covariates is small, this method is NOT expected to work well
-
-    It has been developed for illustrative purposes
+    Abstract class for matching methods
     """
-
+    
     def __init__(self, df_treatment, df_control, y_treatment, y_control):
         self.df_treatment = df_treatment.copy()
         self.df_control = df_control.copy()
@@ -16,18 +13,6 @@ class NaivePairMatching():
         self.df_paired_outcomes = pd.DataFrame(columns=['treatment', 'control'])
         self.y_treatment = y_treatment.copy()
         self.y_control = y_control.copy()
-        self.discarded = []
-
-
-    def find_pair(self, element, element_index):
-        """
-        Finds an element in the control group with the same covariates
-        """
-        pair = self.df_control.loc[self.df_control.eq(element).all(1)]
-        if len(pair) == 0:
-            self.discarded.append(element_index)
-            return 'NOPAIR'
-        return pair.iloc[[0]]
 
 
     def add_outcomes_to_df(self, treatment_index, control_index):
@@ -41,8 +26,7 @@ class NaivePairMatching():
 
         self.df_paired_outcomes = pd.concat(
             [self.df_paired_outcomes,
-            series], ignore_index=True
-        )
+            series], ignore_index=True)
 
 
     def add_pair_to_paired_control(self, pair):
@@ -51,8 +35,11 @@ class NaivePairMatching():
         """
         self.df_paired_control = pd.concat(
             [self.df_paired_control,
-            pair]
-        )
+            pair])
+
+
+    def find_pair(self, element, element_index):
+        pass
 
 
     def pair_matching(self):
@@ -72,3 +59,51 @@ class NaivePairMatching():
                 pair_index
             )
             self.add_pair_to_paired_control(pair)
+
+
+class GreedyPSM(AbstractMatching):
+    """
+    Class that performs matching based on the propensity score of the elements
+
+    Each element in the control group is only considered once
+
+    Follows a greedy approach: for each element in the treatment group takes as pair 
+    the closest element in the control group, without considering global optima
+    """
+
+    def __init__(self, df_treatment, df_control, y_treatment, y_control):
+        super().__init__(df_treatment, df_control, y_treatment, y_control)
+
+
+    def find_pair(self, element, element_index):
+        """
+        Finds the closest element in the control group based on the propensity score
+        """
+        index = (self.df_control['propensity_score']-element.propensity_score).abs().argsort()[:1]
+        pair = self.df_control.iloc[index]
+        return pair
+        
+
+class NaivePairMatching(AbstractMatching):
+    """
+    Class that performs naive pair matching
+
+    Unless the number of covariates is small, this method is NOT expected to work well
+
+    It has been developed for illustrative purposes
+    """
+
+    def __init__(self, df_treatment, df_control, y_treatment, y_control):
+        super().__init__(df_treatment, df_control, y_treatment, y_control)
+        self.discarded = []
+
+
+    def find_pair(self, element, element_index):
+        """
+        Finds an element in the control group with the same covariates
+        """
+        pair = self.df_control.loc[self.df_control.eq(element).all(1)]
+        if len(pair) == 0:
+            self.discarded.append(element_index)
+            return 'NOPAIR'
+        return pair.iloc[[0]]
