@@ -1,5 +1,7 @@
 # causal-inference
 
+Causal Inference methods for observational studies in Python. The methods have been developed for illustrative purposes, without focusing on computational efficiency.
+
 Acknowledgements
 
 Data obtained from http://hbiostat.org/data courtesy of the Vanderbilt University Department of Biostatistics.
